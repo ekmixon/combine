@@ -66,10 +66,10 @@ def maxhits_rdata(dns_records):
 
 def enrich_IPv4(address, dnsdb=None, hostname=None):
     as_num, as_name = org_by_addr(address)
-    country = geo_data.country_code_by_addr('%s' % address)
+    country = geo_data.country_code_by_addr(f'{address}')
     if dnsdb:
         inaddr = address.reverse_dns
-        rhost = maxhits_rdata(dnsdb.query_rrset('%s' % inaddr))
+        rhost = maxhits_rdata(dnsdb.query_rrset(f'{inaddr}'))
     else:
         rhost = None
     return (as_num, as_name, country, hostname, rhost)
@@ -100,24 +100,25 @@ def reserved(address):
     a_reserved = address.is_reserved()
     a_private = address.is_private()
     a_inr = address in reserved_ranges
-    if a_reserved or a_private or a_inr:
-        return True
-    else:
-        return False
+    return bool(a_reserved or a_private or a_inr)
 
 
 def is_ipv4(address):
-    if re.match('(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$', address):
-        return True
-    else:
-        return False
+    return bool(
+        re.match(
+            '(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$',
+            address,
+        )
+    )
 
 
 def is_fqdn(address):
-    if re.match('(?=^.{4,255}$)(^((?!-)[a-zA-Z0-9-]{1,63}(?<!-)\.)+[a-zA-Z]{2,63}$)', address):
-        return True
-    else:
-        return False
+    return bool(
+        re.match(
+            '(?=^.{4,255}$)(^((?!-)[a-zA-Z0-9-]{1,63}(?<!-)\.)+[a-zA-Z]{2,63}$)',
+            address,
+        )
+    )
 
 
 def winnow(in_file, out_file, enr_file):
@@ -131,7 +132,7 @@ def winnow(in_file, out_file, enr_file):
     server = config.get('Winnower', 'dnsdb_server')
     api = config.get('Winnower', 'dnsdb_api')
     enrich_ip = config.get('Winnower', 'enrich_ip')
-    if enrich_ip == '1' or enrich_ip == 'True':
+    if enrich_ip in ['1', 'True']:
         enrich_ip = True
         logger.info('Enriching IPv4 indicators: TRUE')
     else:
@@ -139,7 +140,7 @@ def winnow(in_file, out_file, enr_file):
         logger.info('Enriching IPv4 indicators: FALSE')
 
     enrich_dns = config.get('Winnower', 'enrich_dns')
-    if enrich_dns == '1' or enrich_dns == 'True':
+    if enrich_dns in ['1', 'True']:
         enrich_dns = True
         logger.info('Enriching DNS indicators: TRUE')
     else:
@@ -175,24 +176,24 @@ def winnow(in_file, out_file, enr_file):
                 wheat.append(each)
                 if enrich_ip:
                     e_data = (addr, addr_type, direction, source, note, date) + enrich_IPv4(ipaddr, dnsdb)
-                    enriched.append(e_data)
                 else:
                     e_data = (addr, addr_type, direction, source, note, date) + enrich_IPv4(ipaddr)
-                    enriched.append(e_data)
+                enriched.append(e_data)
             else:
-                logger.error('Found invalid address: %s from: %s' % (addr, source))
+                logger.error(f'Found invalid address: {addr} from: {source}')
         elif addr_type == 'FQDN' and is_fqdn(addr):
             #logger.info('Enriching %s' % addr)
             wheat.append(each)
             if enrich_dns and dnsdb:
-                # print "Enriching %s" % addr
-                e_data = enrich_FQDN(addr, date, dnsdb)
-                if e_data:
+                if e_data := enrich_FQDN(addr, date, dnsdb):
                     for each in e_data:
                         datum = (each[0], "IPv4", direction, source, note, date) + each[1:]
                         enriched.append(datum)
         else:
-            logger.error('Could not determine address type for %s listed as %s' % (addr, addr_type))
+            logger.error(
+                f'Could not determine address type for {addr} listed as {addr_type}'
+            )
+
 
     logger.info('Dumping results')
     with open(out_file, 'wb') as f:

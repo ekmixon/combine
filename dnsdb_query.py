@@ -47,22 +47,22 @@ class DnsdbClient(object):
         if bailiwick:
             if not rrtype:
                 rrtype = 'ANY'
-            path = 'rrset/name/%s/%s/%s' % (oname, rrtype, bailiwick)
+            path = f'rrset/name/{oname}/{rrtype}/{bailiwick}'
         elif rrtype:
-            path = 'rrset/name/%s/%s' % (oname, rrtype)
+            path = f'rrset/name/{oname}/{rrtype}'
         else:
-            path = 'rrset/name/%s' % oname
+            path = f'rrset/name/{oname}'
         return self._query(path)
 
     def query_rdata_name(self, rdata_name, rrtype=None):
         if rrtype:
-            path = 'rdata/name/%s/%s' % (rdata_name, rrtype)
+            path = f'rdata/name/{rdata_name}/{rrtype}'
         else:
-            path = 'rdata/name/%s' % rdata_name
+            path = f'rdata/name/{rdata_name}'
         return self._query(path)
 
     def query_rdata_ip(self, rdata_ip):
-        path = 'rdata/ip/%s' % rdata_ip.replace('/', ',')
+        path = f"rdata/ip/{rdata_ip.replace('/', ',')}"
         return self._query(path)
 
     def _query(self, path):
@@ -114,7 +114,7 @@ def rrset_to_text(m):
     return s.read()
 
 def rdata_to_text(m):
-    return '%s IN %s %s' % (m['rrname'], m['rrtype'], m['rdata'])
+    return f"{m['rrname']} IN {m['rrtype']} {m['rdata']}"
 
 def parse_config(cfg_fname):
     config = {}
@@ -155,35 +155,31 @@ def time_parse(s):
 
 def filter_before(res_list, before_time):
     before_time = time_parse(before_time)
-    new_res_list = []
-
-    for res in res_list:
-        if 'time_first' in res:
-            if res['time_first'] < before_time:
-                new_res_list.append(res)
-        elif 'zone_time_first' in res:
-            if res['zone_time_first'] < before_time:
-                new_res_list.append(res)
-        else:
-            new_res_list.append(res)
-
-    return new_res_list
+    return [
+        res
+        for res in res_list
+        if 'time_first' in res
+        and res['time_first'] < before_time
+        or 'time_first' not in res
+        and 'zone_time_first' in res
+        and res['zone_time_first'] < before_time
+        or 'time_first' not in res
+        and 'zone_time_first' not in res
+    ]
 
 def filter_after(res_list, after_time):
     after_time = time_parse(after_time)
-    new_res_list = []
-
-    for res in res_list:
-        if 'time_last' in res:
-            if res['time_last'] > after_time:
-                new_res_list.append(res)
-        elif 'zone_time_last' in res:
-            if res['zone_time_last'] > after_time:
-                new_res_list.append(res)
-        else:
-            new_res_list.append(res)
-
-    return new_res_list
+    return [
+        res
+        for res in res_list
+        if 'time_last' in res
+        and res['time_last'] > after_time
+        or 'time_last' not in res
+        and 'zone_time_last' in res
+        and res['zone_time_last'] > after_time
+        or 'time_last' not in res
+        and 'zone_time_last' not in res
+    ]
 
 def main():
     global cfg

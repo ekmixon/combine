@@ -25,14 +25,14 @@ def tiq_output(reg_file, enr_file):
         return
 
     tiq_dir = os.path.join(config.get('Baler', 'tiq_directory'), 'data')
-    today = dt.datetime.today().strftime('%Y%m%d')
+    today = dt.datetime.now().strftime('%Y%m%d')
 
     with open(reg_file, 'rb') as f:
         reg_data = json.load(f)
 
     with open(enr_file, 'rb') as f:
         enr_data = json.load(f)
-    logger.info('Preparing tiq directory structure under %s' % tiq_dir)
+    logger.info(f'Preparing tiq directory structure under {tiq_dir}')
     if not os.path.isdir(tiq_dir):
         os.makedirs(os.path.join(tiq_dir, 'raw', 'public_inbound'))
         os.makedirs(os.path.join(tiq_dir, 'raw', 'public_outbound'))
@@ -43,8 +43,16 @@ def tiq_output(reg_file, enr_file):
     outbound_data = [row for row in reg_data if row[2] == 'outbound']
 
     try:
-        bale_reg_csvgz(inbound_data, os.path.join(tiq_dir, 'raw', 'public_inbound', today + '.csv.gz'))
-        bale_reg_csvgz(outbound_data, os.path.join(tiq_dir, 'raw', 'public_outbound', today + '.csv.gz'))
+        bale_reg_csvgz(
+            inbound_data,
+            os.path.join(tiq_dir, 'raw', 'public_inbound', f'{today}.csv.gz'),
+        )
+
+        bale_reg_csvgz(
+            outbound_data,
+            os.path.join(tiq_dir, 'raw', 'public_outbound', f'{today}.csv.gz'),
+        )
+
     except:
         pass
 
@@ -52,8 +60,20 @@ def tiq_output(reg_file, enr_file):
     outbound_data = [row for row in enr_data if row[2] == 'outbound']
 
     try:
-        bale_enr_csvgz(inbound_data, os.path.join(tiq_dir, 'enriched', 'public_inbound', today + '.csv.gz'))
-        bale_enr_csvgz(outbound_data, os.path.join(tiq_dir, 'enriched', 'public_outbound', today + '.csv.gz'))
+        bale_enr_csvgz(
+            inbound_data,
+            os.path.join(
+                tiq_dir, 'enriched', 'public_inbound', f'{today}.csv.gz'
+            ),
+        )
+
+        bale_enr_csvgz(
+            outbound_data,
+            os.path.join(
+                tiq_dir, 'enriched', 'public_outbound', f'{today}.csv.gz'
+            ),
+        )
+
     except:
         pass
 
@@ -62,7 +82,7 @@ def tiq_output(reg_file, enr_file):
 
 def bale_reg_csvgz(harvest, output_file):
     """ bale the data as a gziped csv file"""
-    logger.info('Output regular data as GZip CSV to %s' % output_file)
+    logger.info(f'Output regular data as GZip CSV to {output_file}')
     with gzip.open(output_file, 'wb') as csv_file:
         bale_writer = unicodecsv.writer(csv_file, quoting=unicodecsv.QUOTE_ALL)
 
@@ -73,7 +93,7 @@ def bale_reg_csvgz(harvest, output_file):
 
 def bale_reg_csv(harvest, output_file):
     """ bale the data as a csv file"""
-    logger.info('Output regular data as CSV to %s' % output_file)
+    logger.info(f'Output regular data as CSV to {output_file}')
     with open(output_file, 'wb') as csv_file:
         bale_writer = unicodecsv.writer(csv_file, quoting=unicodecsv.QUOTE_ALL)
 
@@ -84,7 +104,7 @@ def bale_reg_csv(harvest, output_file):
 
 def bale_enr_csv(harvest, output_file):
     """ output the data as an enriched csv file"""
-    logger.info('Output enriched data as CSV to %s' % output_file)
+    logger.info(f'Output enriched data as CSV to {output_file}')
     with open(output_file, 'wb') as csv_file:
         bale_writer = unicodecsv.writer(csv_file, quoting=unicodecsv.QUOTE_ALL)
 
@@ -95,7 +115,7 @@ def bale_enr_csv(harvest, output_file):
 
 def bale_enr_csvgz(harvest, output_file):
     """ output the data as an enriched gziped csv file"""
-    logger.info('Output enriched data as GZip CSV to %s' % output_file)
+    logger.info(f'Output enriched data as GZip CSV to {output_file}')
     with gzip.open(output_file, 'wb') as csv_file:
         bale_writer = unicodecsv.writer(csv_file, quoting=unicodecsv.QUOTE_ALL)
 
@@ -110,31 +130,27 @@ def bale_CRITs_indicator(base_url, data, indicator_que):
         indicator = indicator_que.get()
         if indicator[1] == 'IPv4':
             # using the IP API
-            url = base_url + 'ips/'
+            url = f'{base_url}ips/'
             data['add_indicator'] = "true"
             data['ip'] = indicator[0]
             data['ip_type'] = 'Address - ipv4-addr'
             data['reference'] = indicator[3]
-            # getting the source automatically:
-            source = re.findall(r'\/\/(.*?)\/', data['reference'])
-            if source:
+            if source := re.findall(r'\/\/(.*?)\/', data['reference']):
                 data['source'] = source[0]
             res = requests.post(url, data=data, verify=False)
-            if not res.status_code in [201, 200, 400]:
-                logger.info("Issues with adding: %s" % data['ip'])
+            if res.status_code not in [201, 200, 400]:
+                logger.info(f"Issues with adding: {data['ip']}")
         elif indicator[1] == "FQDN":
             # using the Domain API
-            url = base_url + 'domains/'
+            url = f'{base_url}domains/'
             data['add_indicator'] = "true"
             data['domain'] = indicator[0]
             data['reference'] = indicator[3]
-            # getting the source automatically:
-            source = re.findall(r'\/\/(.*?)\/', data['reference'])
-            if source:
+            if source := re.findall(r'\/\/(.*?)\/', data['reference']):
                 data['source'] = source[0]
             res = requests.post(url, data=data, verify=False)
-            if not res.status_code in [201, 200, 400]:
-                logger.info("Issues with adding: %s" % data['domain'])
+            if res.status_code not in [201, 200, 400]:
+                logger.info(f"Issues with adding: {data['domain']}")
         else:
             logger.info("don't yet know what to do with: %s[%s]" % (indicator[1], indicator[0]))
 
@@ -185,7 +201,7 @@ def bale_CRITs(harvest, filename):
         ioc_queue.put(indicator)
     total_iocs = ioc_queue.qsize()
 
-    for x in range(maxThreads):
+    for _ in range(maxThreads):
         th = threading.Thread(target=bale_CRITs_indicator, args=(base_url, data, ioc_queue))
         th.start()
 
@@ -206,7 +222,7 @@ def bale(input_file, output_file, output_format, is_regular):
         logger.error('HINT: edit combine-example.cfg and save as combine.cfg.')
         return
 
-    logger.info('Reading processed data from %s' % input_file)
+    logger.info(f'Reading processed data from {input_file}')
     with open(input_file, 'rb') as f:
         harvest = json.load(f, encoding='utf8')
 

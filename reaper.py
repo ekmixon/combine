@@ -51,7 +51,7 @@ def reap(file_name):
     for each in inbound_files:
         try:
             with open(each,'rb') as f:
-                inbound_harvest.append(('file://'+each, 200, f.read()))
+                inbound_harvest.append((f'file://{each}', 200, f.read()))
         except IOError as e:
             assert isinstance(logger, logging.Logger)
             logger.error('Reaper: Error while opening "%s" - %s' % (each, e.strerror))
@@ -68,12 +68,12 @@ def reap(file_name):
     for each in outbound_files:
         try:
             with open(each,'rb') as f:
-                outbound_harvest.append(('file://'+each, 200, f.read()))
+                outbound_harvest.append((f'file://{each}', 200, f.read()))
         except IOError as e:
             assert isinstance(logger, logging.Logger)
             logger.error('Reaper: Error while opening "%s" - %s' % (each, e.strerror))
 
-    logger.info('Storing raw feeds in %s' % file_name)
+    logger.info(f'Storing raw feeds in {file_name}')
     harvest = {'inbound': inbound_harvest, 'outbound': outbound_harvest}
 
     with open(file_name, 'wb') as f:

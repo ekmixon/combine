@@ -119,7 +119,7 @@ def process_autoshun(response, source, direction):
     for line in response.splitlines():
 		# Fixed unauthenticated sites, please test accordingly
         if line.startswith("Please"):
-            logger.info("Skipping site " + source)
+            logger.info(f"Skipping site {source}")
             break
         elif not line.startswith('S') and len(line) > 0:
             i = line.partition(',')[0].strip()
@@ -193,8 +193,6 @@ def thresh(input_file, output_file):
                 if site in response[0]:
                     logger.info('Parsing feed from %s', response[0])
                     harvest += thresher_map[site](response[2], response[0], 'inbound')
-                else:  # how to handle non-mapped sites?
-                    pass
         else:  # how to handle non-200 non-404?
             logger.error('Could not handle %s: %s', response[0], response[1])
 
@@ -204,11 +202,6 @@ def thresh(input_file, output_file):
                 if site in response[0]:
                     logger.info('Parsing feed from %s', response[0])
                     harvest += thresher_map[site](response[2], response[0], 'outbound')
-                else:  # how to handle non-mapped sites?
-                    pass
-        else:  # how to handle non-200 non-404?
-            pass
-
     logger.info('Storing parsed data in %s', output_file)
     with open(output_file, 'wb') as f:
         json.dump(harvest, f, indent=2)
